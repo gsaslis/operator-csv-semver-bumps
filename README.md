@@ -52,7 +52,7 @@ To actually bump the version and create the folders and files, run the container
   
 
 ```bash
- docker run -v <PATH_TO_MANIFESTS>:/workdir/manifests gsaslis/operator-csv-semver-bumps:latest minor
+ docker run -v <PATH_TO_MANIFESTS>:/workdir/manifests gsaslis/operator-csv-semver-bump minor
 ```  
 
 

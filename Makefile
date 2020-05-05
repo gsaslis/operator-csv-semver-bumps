@@ -1,2 +1,2 @@
 install:
-	docker build -t gsaslis/operator-csv-semver-bumps:latest .
+	docker build -t gsaslis/operator-csv-semver-bump:latest .
