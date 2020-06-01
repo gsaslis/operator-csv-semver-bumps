@@ -16,6 +16,8 @@ This container image helps with taking care of the version bumping of CSVs.
 * Your operator manifests in some directory in your filesystem
 * Each version of the manifests in a separate sub-folder, inside the `manifests` directory. The name
  of the sub-folder is expected to be the version name (e.g. `0.1.2`, `0.3.5`, `1.9.0`, etc.)
+* The channel name should end with `-$major.$minor`, e.g. `threescale-0.2`, `threescale-2.8`, `threescale-3.0` and so on...
+* The channel currentCSV should be of the format: `$package_name.v$major.$minor.$patch` 
 
 Here is an example of the folder structure, from the [3scale Apicast API Gateway Operator](https://github.com/3scale/apicast-operator-metadata):
 
@@ -52,7 +54,7 @@ To actually bump the version and create the folders and files, run the container
   
 
 ```bash
- docker run -v <PATH_TO_MANIFESTS>:/workdir/manifests gsaslis/operator-csv-semver-bump minor
+ docker run -v <PATH_TO_MANIFESTS>:/workdir/manifests gsaslis/operator-csv-semver-bump ${channel} minor
 ```  
 
 
