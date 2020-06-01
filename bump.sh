@@ -3,9 +3,8 @@
 ## Inspired from https://github.com/tomologic/bump-semver
 
 bump() {
-#  next_ver="${PREFIX}$(increment_ver "$1" "$2" "$3")"
-  next_ver="${PREFIX}$(increment_ver "$1")"
-  latest_ver="${PREFIX}$(find_latest_semver)"
+  next_ver="${PREFIX}$(increment_ver "$1" "$2")"
+  latest_ver="${PREFIX}$(find_channel_semver "$1")"
 
   echo "Will update ${latest_ver} to ${next_ver}"
 
@@ -48,21 +47,24 @@ bump() {
 
   cd ../
 
-  # read defaultChannel
   package_file=$(find_package_file)
   echo "Found package file ${package_file}"
+#
+#  default_channel=$(yq read ${package_file} defaultChannel)
+#
+#  echo "Read defaultChannel: ${default_channel}"
 
-  default_channel=$(yq read ${package_file} defaultChannel)
-
-  echo "Read defaultChannel: ${default_channel}"
-
+  # channel
+  channel=$1
+  channel_version=${channel: -3} # assumes channel ends with `-$major.$minor`
+  channel_without_version=${channel/${channel_version}/} # assumes channel ends with `-$major.$minor`
 
   # if a minor version bump (no need to do this for patch versions)
-  if [[ "$1" = "minor" ]]; then
-    echo "Adding new channel in operator package.yaml ..."
+  if [[ "$2" = "minor" ]]; then
 
     # bump channel value
-    new_channel=threescale-$(increment_channel ${default_channel:11} "0" "1")
+    new_channel=${channel_without_version}$(increment_channel ${channel: -3} "0" "1")
+    echo "Adding new channel ${new_channel} in operator package.yaml ..."
 
     # add a new entry to channels
     yq write -i ${package_file} "channels.[+].name" ${new_channel}
@@ -72,11 +74,11 @@ bump() {
 
     yq write -i ${package_file} "defaultChannel" ${new_channel}
 
-  elif [[ "$1" = "patch" ]]; then
+  elif [[ "$2" = "patch" ]]; then
 
     echo "Updating currentCSV of defaultChannel in operator package.yaml ..."
 
-    yq write -i ${package_file} "channels.(name==${default_channel}).currentCSV" ${next_metadata_name}
+    yq write -i ${package_file} "channels.(name==${channel}).currentCSV" ${next_metadata_name}
 
   fi
 
@@ -88,14 +90,31 @@ find_package_file() {
   find . -type f -name "*.package.yaml"
 }
 
-find_latest_semver() {
-  cd manifests || exit 7
-  ls -d */ | sort --version-sort | tail -n 1 | rev | cut -c2- | rev
+find_channel_semver() {
+  package_file=$(find_package_file)
+#  echo "Found package file ${package_file}"
+
+  current_csv=$(yq read ${package_file} "channels.(name==$1).currentCSV")
+#  echo "Read current_csv: ${current_csv}"
+
+  package_name=$(yq read ${package_file} "packageName")
+  package_name_length=${#package_name}
+#  echo "package name length: ${package_name_length}"
+
+  version_string=".v"
+  version_string_length=${#version_string}
+#  echo "Read version string length: ${version_string_length}"
+
+  replacement_length=${package_name_length}+${version_string_length}
+#  echo "Replacement length: ${replacement_length}"
+
+  echo "${current_csv:${replacement_length}}"
+
 }
 
 increment_ver() {
 
-  sem_ver_bump "$(find_latest_semver)" "$1"
+  sem_ver_bump "$(find_channel_semver $1)" "$2"
 }
 
 increment_channel() {
@@ -116,16 +135,16 @@ esac
 }
 
 usage() {
-  echo "Usage: bump {major|minor|patch}"
+  echo "Usage: bump {channel} {major|minor|patch}"
   echo "Creates a new folder and ClusterServiceVersion (CSV) file, with the appropriate semantic version bumped by one."
   echo
   exit 1
 }
 
 
-case $1 in
-  major) bump $1;;
-  minor) bump $1;;
-  patch) bump $1;;
+case $2 in
+  major) bump $1 $2;;
+  minor) bump $1 $2;;
+  patch) bump $1 $2;;
   *) usage
 esac
