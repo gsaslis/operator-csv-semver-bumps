@@ -125,7 +125,7 @@ increment_channel() {
 sem_ver_bump() {
 case $2 in
   major) echo $1 | awk -F. -v a="1" -v b="0" -v c="0" \
-        '{printf("%d.0.0", $1+a';;
+        '{printf("%d.0.0", $1+a)}';;
   minor) echo $1 | awk -F. -v a="0" -v b="1" -v c="0" \
         '{printf("%d.%d.0", $1+a, $2+b)}';;
   patch) echo $1 | awk -F. -v a="0" -v b="0" -v c="1" \
