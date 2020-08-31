@@ -2,23 +2,27 @@
 
 ## Inspired from https://github.com/tomologic/bump-semver
 
+BUNDLE_CHANNELS_PATH=operators.operatorframework.io.bundle.channels.v1
+BUNDLE_DEFAULT_CHANNEL_PATH=operators.operatorframework.io.bundle.channel.default.v1
+BUNDLE_PACKAGE_PATH=operators.operatorframework.io.bundle.package.v1
+
 bump() {
-  next_ver="${PREFIX}$(increment_ver "$1" "$2")"
-  latest_ver="${PREFIX}$(find_channel_semver "$1")"
+  next_ver="${PREFIX}$(increment_ver "$1")"
+  latest_ver="${PREFIX}$(find_channel_semver )"
+
 
   echo "Will update ${latest_ver} to ${next_ver}"
 
 
   cd manifests || exit 7
-  echo "cp -R ${latest_ver} ${next_ver}"
-  cp -R ${latest_ver} ${next_ver}
-  cd ${next_ver}
+#  echo "cp -R ${latest_ver} ${next_ver}"
+#  cp -R ${latest_ver} ${next_ver}
+#  cd ${next_ver}
 
   latest_file_name="$(find . -type f -name "*${latest_ver}*" | cut -c3-)"
   next_file_name="${latest_file_name/$latest_ver/$next_ver}"
 
-  mv ${latest_file_name} ${next_file_name}
-
+  git mv ${latest_file_name} ${next_file_name}
 
   echo "Replacing .spec.version ..."
 
@@ -47,38 +51,53 @@ bump() {
 
   cd ../
 
-  package_file=$(find_package_file)
-  echo "Found package file ${package_file}"
+  annotations_file=$(find_annotations_file)
+  echo "Found annotations file ${annotations_file}"
 #
-#  default_channel=$(yq read ${package_file} defaultChannel)
-#
-#  echo "Read defaultChannel: ${default_channel}"
-
   # channel
-  channel=$1
-  channel_version=${channel: -3} # assumes channel ends with `-$major.$minor`
-  channel_without_version=${channel/${channel_version}/} # assumes channel ends with `-$major.$minor`
+  channel=$(yq read ${annotations_file} "annotations[${BUNDLE_CHANNELS_PATH}]")
+  echo "Read defaultChannel: ${default_channel}"
+
+  channel_without_version="${channel%-*}-" # assumes channel ends with `-$major.$minor`
+  channel_version="${channel#${channel_without_version}*}" # assumes channel ends with `-$major.$minor`
+
+  product_version="$(grep 'version=' Dockerfile | awk -F\" '{print $2}')"
+
+  next_channel_version="$(increment_channel ${channel_version} "0" "1")"
+  next_product_version="$(increment_version ${product_version} $1)"
+
+#  echo "Read: $channel_without_version"
+#  echo "Read: $channel_version"
 
   # if a minor version bump (no need to do this for patch versions)
-  if [[ "$2" = "minor" ]]; then
+  if [[ "$1" = "minor" ]]; then
 
     # bump channel value
-    new_channel=${channel_without_version}$(increment_channel ${channel: -3} "0" "1")
-    echo "Adding new channel ${new_channel} in operator package.yaml ..."
+    new_channel=${channel_without_version}${next_channel_version}
+    echo "Adding new channel ${new_channel} in operator annotations.yaml ..."
 
-    # add a new entry to channels
-    yq write -i ${package_file} "channels.[+].name" ${new_channel}
-    yq write -i ${package_file} "channels.(name==${new_channel}).currentCSV" ${next_metadata_name}
+    # Update channel
+    yq write -i ${annotations_file} "annotations[${BUNDLE_CHANNELS_PATH}]" ${new_channel}
 
-    echo "Updating defaultChannel in operator package.yaml ..."
+    echo "Updating defaultChannel in operator annotations.yaml ..."
+    yq write -i ${annotations_file} "annotations[${BUNDLE_DEFAULT_CHANNEL_PATH}]" ${new_channel}
 
-    yq write -i ${package_file} "defaultChannel" ${new_channel}
+    echo "Updating Dockerfile channel..."
+    sed -i -e "s/LABEL ${BUNDLE_CHANNELS_PATH}.*/LABEL ${BUNDLE_CHANNELS_PATH}=${new_channel}/" Dockerfile
+    sed -i -e "s/LABEL ${BUNDLE_DEFAULT_CHANNEL_PATH}.*/LABEL ${BUNDLE_DEFAULT_CHANNEL_PATH}=${new_channel}/" Dockerfile
 
-  elif [[ "$2" = "patch" ]]; then
+    echo "Updating Dockerfile semver..."
+    sed -i -e "s/version=\"${product_version}\"/version=\"${next_product_version}\"/" Dockerfile
 
-    echo "Updating currentCSV of defaultChannel in operator package.yaml ..."
 
-    yq write -i ${package_file} "channels.(name==${channel}).currentCSV" ${next_metadata_name}
+  elif [[ "$1" = "patch" ]]; then
+
+    echo "No updates in annotations.yaml needed"
+    echo "No updates in Dockerfile needed"
+
+    echo "Updating Dockerfile semver..."
+    sed -i -e "s/version=\"${product_version}\"/version=\"${next_product_version}\"/" Dockerfile
+
 
   fi
 
@@ -86,35 +105,39 @@ bump() {
 
 }
 
-find_package_file() {
-  find . -type f -name "*.package.yaml"
+find_annotations_file() {
+  echo "metadata/annotations.yaml"
+}
+
+find_csv_file() {
+  echo "$(find manifests -type f -name "*clusterserviceversion*")"
 }
 
 find_channel_semver() {
-  package_file=$(find_package_file)
-#  echo "Found package file ${package_file}"
+  annotations_file=$(find_annotations_file)
+#  echo "Found annotations file ${annotations_file}"
 
-  current_csv=$(yq read ${package_file} "channels.(name==$1).currentCSV")
-#  echo "Read current_csv: ${current_csv}"
-
-  package_name=$(yq read ${package_file} "packageName")
+  package_name=$(yq read ${annotations_file} "annotations[${BUNDLE_PACKAGE_PATH}]")
   package_name_length=${#package_name}
 #  echo "package name length: ${package_name_length}"
 
-  version_string=".v"
-  version_string_length=${#version_string}
-#  echo "Read version string length: ${version_string_length}"
+  csv_file=$(find_csv_file)
+#  echo "Found ClusterServiceVersion file ${csv_file}"
 
-  replacement_length=${package_name_length}+${version_string_length}
-#  echo "Replacement length: ${replacement_length}"
+  current_csv=$(yq read ${csv_file} "spec.version")
+#  echo "Read current_csv: ${current_csv}"
 
-  echo "${current_csv:${replacement_length}}"
+  echo "${current_csv}"
 
 }
 
 increment_ver() {
 
-  sem_ver_bump "$(find_channel_semver $1)" "$2"
+  sem_ver_bump "$(find_channel_semver)" "$1"
+}
+
+increment_version() {
+  sem_ver_bump "$1" "$2"
 }
 
 increment_channel() {
@@ -135,16 +158,16 @@ esac
 }
 
 usage() {
-  echo "Usage: bump {channel} {major|minor|patch}"
-  echo "Creates a new folder and ClusterServiceVersion (CSV) file, with the appropriate semantic version bumped by one."
+  echo "Usage: bump {major|minor|patch}"
+  echo "Updates ClusterServiceVersion (CSV) and metadata files, with the appropriate semantic version bumped by one."
   echo
   exit 1
 }
 
 
-case $2 in
-  major) bump $1 $2;;
-  minor) bump $1 $2;;
-  patch) bump $1 $2;;
+case $1 in
+  major) bump $1;;
+  minor) bump $1;;
+  patch) bump $1;;
   *) usage
 esac

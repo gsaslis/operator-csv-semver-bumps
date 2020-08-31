@@ -26,25 +26,12 @@ $ tree .
 .
 ├── Dockerfile
 ├── Makefile
+├── container.yaml
 └── manifests
-    ├── 0.2.0
-    │   ├── apicast-operator.v0.2.0.clusterserviceversion.yaml
-    │   └── apps_v1alpha1_apicast_crd.yaml
-    ├── 0.2.1
-    │   ├── apicast-operator.v0.2.1.clusterserviceversion.yaml
-    │   └── apps_v1alpha1_apicast_crd.yaml
-    ├── 0.2.2
-    │   ├── apicast-operator.v0.2.2.clusterserviceversion.yaml
-    │   └── apps_v1alpha1_apicast_crd.yaml
-    ├── 0.3.0
-    │   ├── apicast-operator.v0.3.0.clusterserviceversion.yaml
-    │   └── apps_v1alpha1_apicast_crd.yaml
-    ├── 0.4.0
-    │   ├── apicast-operator.v0.4.0.clusterserviceversion.yaml
-    │   └── apps_v1alpha1_apicast_crd.yaml
-    └── apicast-operator.package.yaml
-
-6 directories, 13 files
+    ├── apicast-operator.v0.3.0.clusterserviceversion.yaml
+    └── apps_v1alpha1_apicast_crd.yaml
+└── metadata
+    └── annotations.yaml
 ``` 
 
 ### Bump Version
@@ -54,7 +41,7 @@ To actually bump the version and create the folders and files, run the container
   
 
 ```bash
- docker run -v <PATH_TO_MANIFESTS>:/workdir/manifests gsaslis/operator-csv-semver-bump ${channel} minor
+ docker run -v <PATH_TO_METADATA_REPO>:/workdir gsaslis/operator-csv-semver-bump minor
 ```  
 
 
