@@ -69,7 +69,7 @@ bump() {
 #  echo "Read: $channel_without_version"
 #  echo "Read: $channel_version"
 
-  # if a minor version bump (no need to do this for patch versions)
+  # if a minor version bump
   if [[ "$1" = "minor" ]]; then
 
     # bump channel value
@@ -95,13 +95,13 @@ bump() {
     echo "No updates in annotations.yaml needed"
     echo "No updates in Dockerfile needed"
 
-    echo "Updating Dockerfile semver..."
-    sed -i -e "s/version=\"${product_version}\"/version=\"${next_product_version}\"/" Dockerfile
+#    echo "Updating Dockerfile semver..."
+#    sed -i -e "s/version=\"${product_version}\"/version=\"${next_product_version}\"/" Dockerfile
 
 
   fi
 
-  echo "DONE. Bumped: ${latest_ver} to ${next_ver}. Created ${next_file_name}. Updated "
+  echo "DONE. Bumped: ${latest_ver} to ${next_ver}. Updated ${next_file_name}. "
 
 }
 
