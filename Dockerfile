@@ -7,7 +7,7 @@ RUN curl --location --output yq https://github.com/mikefarah/yq/releases/downloa
   && chmod +x yq \
   && mv yq /usr/bin/yq
 
-COPY bump.sh /workdir/bump.sh
-RUN chmod +x /workdir/bump.sh
+COPY bump.sh /bump.sh
+RUN chmod +x /bump.sh
 
-ENTRYPOINT ["/workdir/bump.sh"]
+ENTRYPOINT ["/bump.sh"]
